@@ -53,6 +53,7 @@ void main()
 		if (modEnabled) {
 			Ped playerPed = PLAYER::GET_PLAYER_PED(PLAYER::PLAYER_ID());
 			Ped currentHorse = PED::GET_MOUNT(playerPed);
+			Entity currentWeapon = WEAPON::GET_CURRENT_PED_WEAPON_ENTITY_INDEX(playerPed, -1);
 
 			if (currentHorse != 0) {
 				// If riding, set the current horse to be invincible
