@@ -41,7 +41,7 @@ void main()
 				// Example: UI::DisplayHelpTextThisFrame("Mod Disabled", 0);
 			}
 
-			//Used ai for this because I had never coded in c++
+			// Used ai for this because I had never coded in c++
 		}
 
 		if (!modEnabled)
