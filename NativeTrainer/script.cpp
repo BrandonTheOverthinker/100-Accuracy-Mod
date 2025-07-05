@@ -7,41 +7,38 @@
 #include "script.h"
 #include "scriptmenu.h"
 #include "keyboard.h"
-
 #include <unordered_map>
 #include <vector>
 #include <string>
 #include <ctime>
 #include <iostream>
 #include <fstream>
-using namespace std;
-
 #include "scriptinfo.h"
 
+using namespace std;
 static Ped lastHorse = 0;
-#define WEAPON_LASSO 0x7A8A724A //Don't think this is the correct hash
+#define WEAPON_LASSO 0x7A8A724A // Don't think this is the correct hash
 bool modEnabled = true;
 
 void main()
 {
-	Vector3 playerpos;
+	Vector3 playerPos;
 	while (true)
 	{
 		
 		if (IsKeyJustUp(VK_F3))  // using the keyboard.h function
 		{
 			modEnabled = !modEnabled;
-			// Optionally, you can display a message on screen here to tell the player the mod is now on/off.
+			
 			if (modEnabled)
 			{
-				// Example: UI::DisplayHelpTextThisFrame("Mod Enabled", 0);
+				// Display text to indicate the mod is enabled, for 3 seconds
+				
 			}
 			else
 			{
-				// Example: UI::DisplayHelpTextThisFrame("Mod Disabled", 0);
+				// Display text to indicate the mod is disabled, for 3 seconds
 			}
-
-			// Used ai for this because I had never coded in c++
 		}
 
 		if (!modEnabled)
@@ -74,9 +71,9 @@ void main()
 			else if (PED::IS_PED_SHOOTING(PLAYER::GET_PLAYER_PED(PLAYER::PLAYER_ID()))) {
 				WAIT(3500);
 				if (!PLAYER::HAS_PLAYER_DAMAGED_AT_LEAST_ONE_PED(PLAYER::PLAYER_ID())) {
-					playerpos = ENTITY::GET_ENTITY_COORDS(PLAYER::GET_PLAYER_PED(PLAYER::PLAYER_ID()), true, false);
+					playerPos = ENTITY::GET_ENTITY_COORDS(PLAYER::GET_PLAYER_PED(PLAYER::PLAYER_ID()), true, false);
 					
-					FIRE::ADD_EXPLOSION(playerpos.x, playerpos.y, playerpos.z, 26, 10.0f, true, false, 10.0f);
+					FIRE::ADD_EXPLOSION(playerPos.x, playerPos.y, playerPos.z, 26, 10.0f, true, false, 10.0f);
 				}
 			}
 			
