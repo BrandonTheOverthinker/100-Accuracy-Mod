@@ -40,6 +40,8 @@ void main()
 			{
 				// Example: UI::DisplayHelpTextThisFrame("Mod Disabled", 0);
 			}
+
+			//Used ai for this because I had never coded in c++
 		}
 
 		if (!modEnabled)
@@ -53,12 +55,12 @@ void main()
 			Ped currentHorse = PED::GET_MOUNT(playerPed);
 
 			if (currentHorse != 0) {
-				// While riding, make sure the current horse is invincible
+				// If riding, set the current horse to be invincible
 				ENTITY::SET_ENTITY_INVINCIBLE(currentHorse, true);
 				lastHorse = currentHorse; // update our stored reference
 			}
 			else if (lastHorse != 0) {
-				// If we are not riding now, reset the last horse to be vulnerable.
+				// If not riding, reset the last horse to be vulnerable.
 				ENTITY::SET_ENTITY_INVINCIBLE(lastHorse, false);
 				lastHorse = 0;
 			}
@@ -66,7 +68,7 @@ void main()
 			Hash currentWeapon = WEAPON::GET_CURRENT_PED_WEAPON(playerPed, &currentWeapon, true, -1, false);
 			if (currentWeapon == WEAPON_LASSO)
 			{
-				// Skip explosion because the lasso should not count.
+				// Skip explosion because the lasso should not count. still doesn't work
 			}
 			else if (PED::IS_PED_SHOOTING(PLAYER::GET_PLAYER_PED(PLAYER::PLAYER_ID()))) {
 				WAIT(3500);
