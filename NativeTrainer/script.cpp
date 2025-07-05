@@ -19,7 +19,7 @@ using namespace std;
 #include "scriptinfo.h"
 
 static Ped lastHorse = 0;
-#define WEAPON_LASSO 0x7A8A724A
+#define WEAPON_LASSO 0x7A8A724A //Don't think this is the correct hash
 bool modEnabled = true;
 
 void main()
@@ -66,7 +66,7 @@ void main()
 				lastHorse = 0;
 			}
 
-			Hash currentWeapon = WEAPON::GET_CURRENT_PED_WEAPON(playerPed, &currentWeapon, true, -1, false);
+			
 			if (currentWeapon == WEAPON_LASSO)
 			{
 				// Skip explosion because the lasso should not count. still doesn't work
