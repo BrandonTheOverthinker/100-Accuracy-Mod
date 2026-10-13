@@ -8,6 +8,7 @@
 #include "scriptmenu.h"
 #include "keyboard.h"
 #include <unordered_map>
+#include <unordered_set>
 #include <vector>
 #include <string>
 #include <ctime>
@@ -60,7 +61,7 @@ static ULONGLONG getTime()
 
 static string hexString(Hash h)
 {
-	char buf[16];
+	char buf[32];
 	sprintf_s(buf, "0x%08X", (unsigned int)h);
 	return string(buf);
 }
@@ -184,13 +185,13 @@ void main()
 				{
 					shotPending = true;
 					hitSeen = false;
-					shotStart = now;
-					shotDeadline = now + window;
+					shotStart = getTime();
+					shotDeadline = getTime() + window;
 				}
-				else if (now + window > shotDeadline)
+				else if (getTime() + window > shotDeadline)
 				{
 					// if the user shoots, then throws dynamite: stretch the window, never shrink it
-					shotDeadline = now + window;
+					shotDeadline = getTime() + window;
 				}
 
 				logMessage("Shot, weapon " + hexString(shotWeapon) + ", window " + to_string(window) + "ms");
@@ -201,17 +202,17 @@ void main()
 			// (watch for a hit, explode if the window runs out)
 		if (shotPending)
 		{
-			if (!hitSeen && PLAYER::HAS_PLAYER_DAMAGED_AT_LEAST_ONE_PED(player))
+			if (!hitSeen && PLAYER::HAS_PLAYER_DAMAGED_AT_LEAST_ONE_PED(PLAYER::PLAYER_ID()))
 			{
 				hitSeen = true;
-				logMessage("Hit registered " + to_string(now - shotStart) + "ms after first shot");
+				logMessage("Hit registered " + to_string(getTime() - shotStart) + "ms after first shot");
 		}
 					
 			if (ENTITY::GET_ENTITY_HEALTH(playerPed) <= 0)
 			{
 				cancelPendingShot(); // already dead, nothing to explode
 			}
-			else if (now >= shotDeadline)
+			else if (getTime() >= shotDeadline)
 			{
 				if (!hitSeen)
 				{
@@ -227,7 +228,7 @@ void main()
 			}
 		}
 			
-		PLAYER::CLEAR_PLAYER_HAS_DAMAGED_AT_LEAST_ONE_PED(player);
+		PLAYER::CLEAR_PLAYER_HAS_DAMAGED_AT_LEAST_ONE_PED(PLAYER::PLAYER_ID());
 		prevWeapon = weaponNow;
 		WAIT(0);
 	}
