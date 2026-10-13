@@ -120,6 +120,11 @@ void main()
 				// Display text to indicate the mod is disabled, for 3 seconds
 				showStatusText("100% Accuracy Mod: DISABLED");
 				cancelPendingShot();
+
+				// Disable horse invincibility if the mod is turned off while riding:
+				if (lastHorse != 0) {
+					ENTITY::SET_ENTITY_INVINCIBLE(lastHorse, false);
+					lastHorse = 0;
 			}
 		}
 			logMessage(modEnabled ? "Mod ENABLED" : "Mod DISABLED");
