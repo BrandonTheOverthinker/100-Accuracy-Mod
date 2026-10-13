@@ -33,9 +33,21 @@ static const unordered_set<Hash> exemptWeapons = {
 static const unordered_set<Hash> explodingWeapons = {
 	0xA64DAA5E, // dynamite
 };
+
+	// States: //
+
+//#define WEAPON_LASSO 0x7A8A724A // Don't think this is the correct hash
+static bool modEnabled = true;
 static Ped lastHorse = 0;
-#define WEAPON_LASSO 0x7A8A724A // Don't think this is the correct hash
-bool modEnabled = true;
+static bool wasShooting = false; // detecting the moment a shot starts
+static Hash prevWeapon = 0;
+static bool shotPending = false; // are we waiting to see if a shot lands or not?
+static bool hitSeen = false; // did ped get damaged?
+static ULONGLONG shotStart = 0;
+static ULONGLONG shotDeadline = 0;
+static string statusText;
+static bool msgVisible = false;
+static ULONGLONG msgEnd = 0;
 
 void main()
 {
