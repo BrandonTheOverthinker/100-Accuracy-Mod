@@ -20,8 +20,9 @@ using namespace std;
 
 	// Settings: //
 
-static const ULONGLONG defaultKillWindow = 3500;
-static const ULONGLONG dynamicKillWindow = 9000; // tune later
+static const ULONGLONG defaultKillWindow = 2000;
+static const ULONGLONG bowKillWindow = 3500;
+static const ULONGLONG dynamicKillWindow = 6000;
 static const ULONGLONG msgDuration = 3000;  // how long the F3 text stays on screen
 static const bool logging = true;  // writes 100AccuracyMod.log (in the game folder)
 
@@ -33,6 +34,10 @@ static const unordered_set<Hash> exemptWeapons = {
 
 static const unordered_set<Hash> explodingWeapons = {
 	0xA64DAA5E, // dynamite
+};
+
+static const unordered_set<Hash> bowWeapons = {
+	0x88A8505C, // bow
 };
 
 	// States: //
@@ -179,7 +184,7 @@ void main()
 			}
 			else
 			{
-				ULONGLONG window = explodingWeapons.count(shotWeapon) ? dynamicKillWindow : defaultKillWindow;
+				ULONGLONG window = explodingWeapons.count(shotWeapon) ? dynamicKillWindow : (bowWeapons.count(shotWeapon) ? bowKillWindow : defaultKillWindow);
 
 				if (!shotPending)
 				{
