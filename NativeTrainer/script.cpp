@@ -207,10 +207,6 @@ void main()
 					hitSeen = true;
 					logMessage("Hit registered " + to_string(now - shotStart) + "ms after first shot");
 			}
-			else if (PED::IS_PED_SHOOTING(PLAYER::GET_PLAYER_PED(PLAYER::PLAYER_ID()))) {
-				WAIT(3500);
-				if (!PLAYER::HAS_PLAYER_DAMAGED_AT_LEAST_ONE_PED(PLAYER::PLAYER_ID())) {
-					playerPos = ENTITY::GET_ENTITY_COORDS(PLAYER::GET_PLAYER_PED(PLAYER::PLAYER_ID()), true, false);
 					
 				if (ENTITY::GET_ENTITY_HEALTH(playerPed) <= 0)
 				{
