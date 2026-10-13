@@ -113,13 +113,22 @@ void main()
 			if (modEnabled)
 			{
 				// Display text to indicate the mod is enabled, for 3 seconds
-				
+				showStatusText("100% Accuracy Mod: ENABLED");
 			}
 			else
 			{
 				// Display text to indicate the mod is disabled, for 3 seconds
+				showStatusText("100% Accuracy Mod: DISABLED");
+				cancelPendingShot();
 			}
 		}
+			logMessage(modEnabled ? "Mod ENABLED" : "Mod DISABLED");
+		}
+
+		// Hide the text after msgDuration, otherwise draw it (runs even while the mod is disabled)
+		if (msgVisible && getTime() >= msgEnd)
+			msgVisible = false;
+		drawStatusText();
 
 		if (!modEnabled)
 		{
