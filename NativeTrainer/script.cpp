@@ -16,6 +16,23 @@
 #include "scriptinfo.h"
 
 using namespace std;
+
+	// Settings: //
+
+static const ULONGLONG defaultKillWindow = 3500;
+static const ULONGLONG dynamicKillWindow = 9000; // tune later
+static const ULONGLONG msgDuration = 3000;  // how long the F3 text stays on screen
+static const bool logging = true;  // writes 100AccuracyMod.log (in the game folder)
+
+// Weapons/items that never count as a shot:
+static const unordered_set<Hash> exemptWeapons = {
+	0x7A8A724A,   // lasso
+	0x7067E7A7, // fire bottle
+};
+
+static const unordered_set<Hash> explodingWeapons = {
+	0xA64DAA5E, // dynamite
+};
 static Ped lastHorse = 0;
 #define WEAPON_LASSO 0x7A8A724A // Don't think this is the correct hash
 bool modEnabled = true;
