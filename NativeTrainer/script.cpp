@@ -141,7 +141,6 @@ void main()
 			continue;
 		}
 		
-		if (modEnabled) {
 			Ped playerPed = PLAYER::GET_PLAYER_PED(PLAYER::PLAYER_ID());
 			Ped currentHorse = PED::GET_MOUNT(playerPed);
 			//Old Weapon Check System:
