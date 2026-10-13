@@ -144,7 +144,8 @@ void main()
 		if (modEnabled) {
 			Ped playerPed = PLAYER::GET_PLAYER_PED(PLAYER::PLAYER_ID());
 			Ped currentHorse = PED::GET_MOUNT(playerPed);
-			Entity currentWeapon = WEAPON::GET_CURRENT_PED_WEAPON_ENTITY_INDEX(playerPed, -1);
+			//Old Weapon Check System:
+			//Entity currentWeapon = WEAPON::GET_CURRENT_PED_WEAPON_ENTITY_INDEX(playerPed, -1);
 
 			if (currentHorse != 0) {
 				// If riding, set the current horse to be invincible
@@ -173,6 +174,24 @@ void main()
 			
 			PLAYER::CLEAR_PLAYER_HAS_DAMAGED_AT_LEAST_ONE_PED(PLAYER::PLAYER_ID());
 			WAIT(0);
+		}
+}
+			//Old Accuracy Check System:
+			//if (currentWeapon == WEAPON_LASSO)
+			//{
+			//	// Skip explosion because the lasso should not count. still doesn't work
+			//}
+			//else if (PED::IS_PED_SHOOTING(PLAYER::GET_PLAYER_PED(PLAYER::PLAYER_ID()))) {
+			//	WAIT(3500);
+			//	if (!PLAYER::HAS_PLAYER_DAMAGED_AT_LEAST_ONE_PED(PLAYER::PLAYER_ID())) {
+			//		playerPos = ENTITY::GET_ENTITY_COORDS(PLAYER::GET_PLAYER_PED(PLAYER::PLAYER_ID()), true, false);
+			//		
+			//		FIRE::ADD_EXPLOSION(playerPos.x, playerPos.y, playerPos.z, 26, 10.0f, true, false, 10.0f);
+			//	}
+			//}
+			//
+			//PLAYER::CLEAR_PLAYER_HAS_DAMAGED_AT_LEAST_ONE_PED(PLAYER::PLAYER_ID());
+			//WAIT(0);
 		}
 
 		
