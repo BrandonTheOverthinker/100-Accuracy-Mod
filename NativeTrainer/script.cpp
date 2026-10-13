@@ -47,10 +47,12 @@ static bool modEnabled = true;
 static Ped lastHorse = 0;
 static bool wasShooting = false; // detecting the moment a shot starts
 static Hash prevWeapon = 0;
+
 static bool shotPending = false; // are we waiting to see if a shot lands or not?
 static bool hitSeen = false; // did ped get damaged?
 static ULONGLONG shotStart = 0;
 static ULONGLONG shotDeadline = 0;
+
 static string statusText;
 static bool msgVisible = false;
 static ULONGLONG msgEnd = 0;
