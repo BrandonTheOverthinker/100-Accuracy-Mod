@@ -141,118 +141,113 @@ void main()
 			continue;
 		}
 		
-			Ped playerPed = PLAYER::GET_PLAYER_PED(PLAYER::PLAYER_ID());
-			Ped currentHorse = PED::GET_MOUNT(playerPed);
-			//Old Weapon Check System:
-			//Entity currentWeapon = WEAPON::GET_CURRENT_PED_WEAPON_ENTITY_INDEX(playerPed, -1);
+		Ped playerPed = PLAYER::GET_PLAYER_PED(PLAYER::PLAYER_ID());
+		Ped currentHorse = PED::GET_MOUNT(playerPed);
+		//Old Weapon Check System:
+		//Entity currentWeapon = WEAPON::GET_CURRENT_PED_WEAPON_ENTITY_INDEX(playerPed, -1);
 
-			if (currentHorse != 0) {
-				// If riding, set the current horse to be invincible
-				ENTITY::SET_ENTITY_INVINCIBLE(currentHorse, true);
-				lastHorse = currentHorse; // update our stored reference
-			}
-			else if (lastHorse != 0) {
-				// If not riding, reset the last horse to be vulnerable.
-				ENTITY::SET_ENTITY_INVINCIBLE(lastHorse, false);
-				lastHorse = 0;
-			}
+		if (currentHorse != 0) {
+			// If riding, set the current horse to be invincible
+			ENTITY::SET_ENTITY_INVINCIBLE(currentHorse, true);
+			lastHorse = currentHorse; // update our stored reference
+		}
+		else if (lastHorse != 0) {
+			// If not riding, reset the last horse to be vulnerable.
+			ENTITY::SET_ENTITY_INVINCIBLE(lastHorse, false);
+			lastHorse = 0;
+		}
 
-			// Which weapon do we have? (this returns a HASH, unlike the old ENTITY_INDEX call)
-			Hash weaponNow = 0;
-			WEAPON::GET_CURRENT_PED_WEAPON(playerPed, &weaponNow, false, 0, false);
+		// Which weapon do we have? (this returns a HASH, unlike the old ENTITY_INDEX call)
+		Hash weaponNow = 0;
+		WEAPON::GET_CURRENT_PED_WEAPON(playerPed, &weaponNow, false, 0, false);
 
-			// Did a new shot just start?
-			bool shooting = PED::IS_PED_SHOOTING(playerPed) != 0;
-			bool newShot = shooting && !wasShooting; // only true on the first frame of a shot
-			wasShooting = shooting; // saves this frame’s result so the next frame can compare against it
+		// Did a new shot just start?
+		bool shooting = PED::IS_PED_SHOOTING(playerPed) != 0;
+		bool newShot = shooting && !wasShooting; // only true on the first frame of a shot
+		wasShooting = shooting; // saves this frame’s result so the next frame can compare against it
 			
-			if (newShot)
+		if (newShot)
+		{
+			// Use last frame's weapon: thrown items (dynamite, fire bottles) have already
+			// left your hand by the time the shot is detected, so "current" may be unarmed.
+			Hash shotWeapon = (prevWeapon != 0) ? prevWeapon : weaponNow;
+
+			if (exemptWeapons.count(shotWeapon))
 			{
-				// Use last frame's weapon: thrown items (dynamite, fire bottles) have already
-				// left your hand by the time the shot is detected, so "current" may be unarmed.
-				Hash shotWeapon = (prevWeapon != 0) ? prevWeapon : weaponNow;
-
-				if (exemptWeapons.count(shotWeapon))
-				{
-					logMessage("Shot ignored, exempt weapon " + hexString(shotWeapon));
-				}
-				else
-				{
-					ULONGLONG window = explodingWeapons.count(shotWeapon) ? dynamicKillWindow : defaultKillWindow;
-
-					if (!shotPending)
-					{
-						shotPending = true;
-						hitSeen = false;
-						shotStart = now;
-						shotDeadline = now + window;
-					}
-					else if (now + window > shotDeadline)
-					{
-						// e.g. you shot, then threw dynamite: stretch the window, never shrink it
-						shotDeadline = now + window;
-					}
-
-					logMessage("Shot, weapon " + hexString(shotWeapon) + ", window " + to_string(window) + "ms");
-				}
+				logMessage("Shot ignored, exempt weapon " + hexString(shotWeapon));
 			}
+			else
+			{
+				ULONGLONG window = explodingWeapons.count(shotWeapon) ? dynamicKillWindow : defaultKillWindow;
+
+				if (!shotPending)
+				{
+					shotPending = true;
+					hitSeen = false;
+					shotStart = now;
+					shotDeadline = now + window;
+				}
+				else if (now + window > shotDeadline)
+				{
+					// if the user shoots, then throws dynamite: stretch the window, never shrink it
+					shotDeadline = now + window;
+				}
+
+				logMessage("Shot, weapon " + hexString(shotWeapon) + ", window " + to_string(window) + "ms");
+			}
+		}
 			
 			// Waiting on a shot:
 			// (watch for a hit, explode if the window runs out)
-			if (shotPending)
+		if (shotPending)
+		{
+			if (!hitSeen && PLAYER::HAS_PLAYER_DAMAGED_AT_LEAST_ONE_PED(player))
 			{
-				if (!hitSeen && PLAYER::HAS_PLAYER_DAMAGED_AT_LEAST_ONE_PED(player))
-				{
-					hitSeen = true;
-					logMessage("Hit registered " + to_string(now - shotStart) + "ms after first shot");
-			}
+				hitSeen = true;
+				logMessage("Hit registered " + to_string(now - shotStart) + "ms after first shot");
+		}
 					
-				if (ENTITY::GET_ENTITY_HEALTH(playerPed) <= 0)
-				{
-					cancelPendingShot(); // already dead, nothing to explode
-				}
-				else if (now >= shotDeadline)
-				{
-					if (!hitSeen)
-					{
-						Vector3 pos = ENTITY::GET_ENTITY_COORDS(playerPed, true, false);
-						FIRE::ADD_EXPLOSION(pos.x, pos.y, pos.z, 26, 10.0f, true, false, 10.0f);
-						logMessage("EXPLODE - no hit within window (weapon now " + hexString(weaponNow) + ")");
-					}
-					else
-					{
-						logMessage("Window closed OK");
-					}
-					cancelPendingShot();
-				}
+			if (ENTITY::GET_ENTITY_HEALTH(playerPed) <= 0)
+			{
+				cancelPendingShot(); // already dead, nothing to explode
 			}
+			else if (now >= shotDeadline)
+			{
+				if (!hitSeen)
+				{
+					Vector3 pos = ENTITY::GET_ENTITY_COORDS(playerPed, true, false);
+					FIRE::ADD_EXPLOSION(pos.x, pos.y, pos.z, 26, 10.0f, true, false, 10.0f);
+					logMessage("EXPLODE - no hit within window (weapon now " + hexString(weaponNow) + ")");
+				}
+				else
+				{
+					logMessage("Window closed OK");
+				}
+				cancelPendingShot();
+			}
+		}
 			
-			PLAYER::CLEAR_PLAYER_HAS_DAMAGED_AT_LEAST_ONE_PED(player);
-			prevWeapon = weaponNow;
-			WAIT(0);
-		}
-}
-			//Old Accuracy Check System:
-			//if (currentWeapon == WEAPON_LASSO)
-			//{
-			//	// Skip explosion because the lasso should not count. still doesn't work
-			//}
-			//else if (PED::IS_PED_SHOOTING(PLAYER::GET_PLAYER_PED(PLAYER::PLAYER_ID()))) {
-			//	WAIT(3500);
-			//	if (!PLAYER::HAS_PLAYER_DAMAGED_AT_LEAST_ONE_PED(PLAYER::PLAYER_ID())) {
-			//		playerPos = ENTITY::GET_ENTITY_COORDS(PLAYER::GET_PLAYER_PED(PLAYER::PLAYER_ID()), true, false);
-			//		
-			//		FIRE::ADD_EXPLOSION(playerPos.x, playerPos.y, playerPos.z, 26, 10.0f, true, false, 10.0f);
-			//	}
-			//}
-			//
-			//PLAYER::CLEAR_PLAYER_HAS_DAMAGED_AT_LEAST_ONE_PED(PLAYER::PLAYER_ID());
-			//WAIT(0);
-		}
-
-		
+		PLAYER::CLEAR_PLAYER_HAS_DAMAGED_AT_LEAST_ONE_PED(player);
+		prevWeapon = weaponNow;
+		WAIT(0);
 	}
 }
+		//Old Accuracy Check System:
+		//if (currentWeapon == WEAPON_LASSO)
+		//{
+		//	// Skip explosion because the lasso should not count. still doesn't work
+		//}
+		//else if (PED::IS_PED_SHOOTING(PLAYER::GET_PLAYER_PED(PLAYER::PLAYER_ID()))) {
+		//	WAIT(3500);
+		//	if (!PLAYER::HAS_PLAYER_DAMAGED_AT_LEAST_ONE_PED(PLAYER::PLAYER_ID())) {
+		//		playerPos = ENTITY::GET_ENTITY_COORDS(PLAYER::GET_PLAYER_PED(PLAYER::PLAYER_ID()), true, false);
+		//		
+		//		FIRE::ADD_EXPLOSION(playerPos.x, playerPos.y, playerPos.z, 26, 10.0f, true, false, 10.0f);
+		//	}
+		//}
+		//
+		//PLAYER::CLEAR_PLAYER_HAS_DAMAGED_AT_LEAST_ONE_PED(PLAYER::PLAYER_ID());
+		//WAIT(0);
 
 void ScriptMain()
 {
