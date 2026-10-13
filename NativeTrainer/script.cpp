@@ -49,6 +49,57 @@ static string statusText;
 static bool msgVisible = false;
 static ULONGLONG msgEnd = 0;
 
+	// Helpers: //
+
+// One place for the clock to experiment with the dead-eye bug,
+// could try swapping this for GAMEPLAY::GET_GAME_TIMER().
+static ULONGLONG getTime()
+{
+	return GetTickCount64();
+}
+
+static string hexString(Hash h)
+{
+	char buf[16];
+	sprintf_s(buf, "0x%08X", (unsigned int)h);
+	return string(buf);
+}
+
+static void logMessage(const string& msg)
+{
+	if (!logging) return;
+	ofstream f("100AccuracyMod.log", ios::app);
+	f << getTime() << "  " << msg << "\n";
+}
+
+// Bottom screen text. Uses the same UI::DRAW_TEXT approach as rampage trainer,
+// it has to be drawn every frame.
+static void showStatusText(const char* text)
+{
+	statusText = text;
+	msgVisible = true;
+	msgEnd = getTime() + msgDuration;
+}
+
+static void drawStatusText()
+{
+	if (!msgVisible) return;
+
+	UI::SET_TEXT_SCALE(0.5f, 0.5f);
+	UI::SET_TEXT_COLOR_RGBA(255, 255, 255, 255);
+	UI::SET_TEXT_CENTRE(1);
+	UI::SET_TEXT_DROPSHADOW(2, 0, 0, 0, 255);
+	UI::DRAW_TEXT(GAMEPLAY::CREATE_STRING(10, "LITERAL_STRING", const_cast<char*>(statusText.c_str())), 0.5f, 0.90f);
+}
+
+static void cancelPendingShot()
+{
+	shotPending = false;
+	hitSeen = false;
+}
+
+	// Main loop: //
+
 void main()
 {
 	Vector3 playerPos;
