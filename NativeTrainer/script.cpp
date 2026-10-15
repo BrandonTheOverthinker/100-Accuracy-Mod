@@ -26,9 +26,8 @@ static const ULONGLONG dynamicKillWindow = 6000;
 static const ULONGLONG msgDuration = 3000;  // how long the F3 text stays on screen
 static const bool logging = true;  // writes 100AccuracyMod.log (in the game folder)
 
-// Weapons/items that never count as a shot:
 static const unordered_set<Hash> exemptWeapons = {
-	0x7A8A724A,   // lasso
+	0x7A8A724A, // lasso
 	0x7067E7A7, // fire bottle
 };
 
@@ -42,7 +41,6 @@ static const unordered_set<Hash> bowWeapons = {
 
 	// States: //
 
-//#define WEAPON_LASSO 0x7A8A724A // Don't think this is the correct hash
 static bool modEnabled = true;
 static Ped lastHorse = 0;
 static bool wasShooting = false; // detecting the moment a shot starts
@@ -59,8 +57,7 @@ static ULONGLONG msgEnd = 0;
 
 	// Helpers: //
 
-// One place for the clock to experiment with the dead-eye bug,
-// could try swapping this for GAMEPLAY::GET_GAME_TIMER().
+// One place for the clock to experiment with the dead-eye bug, could try swapping this for GAMEPLAY::GET_GAME_TIMER().
 static ULONGLONG getTime()
 {
 	return GetTickCount64();
@@ -80,8 +77,7 @@ static void logMessage(const string& msg)
 	f << getTime() << "  " << msg << "\n";
 }
 
-// Bottom screen text. Uses the same UI::DRAW_TEXT approach as rampage trainer,
-// it has to be drawn every frame.
+// Bottom screen text. Uses the same UI::DRAW_TEXT approach as rampage trainer (has to be drawn every frame).
 static void showStatusText(const char* text)
 {
 	statusText = text;
@@ -110,7 +106,6 @@ static void cancelPendingShot()
 
 void main()
 {
-	Vector3 playerPos;
 	while (true)
 	{
 		
@@ -151,13 +146,11 @@ void main()
 		
 		Ped playerPed = PLAYER::GET_PLAYER_PED(PLAYER::PLAYER_ID());
 		Ped currentHorse = PED::GET_MOUNT(playerPed);
-		//Old Weapon Check System:
-		//Entity currentWeapon = WEAPON::GET_CURRENT_PED_WEAPON_ENTITY_INDEX(playerPed, -1);
 
 		if (currentHorse != 0) {
 			// If riding, set the current horse to be invincible
 			ENTITY::SET_ENTITY_INVINCIBLE(currentHorse, true);
-			lastHorse = currentHorse; // update our stored reference
+			lastHorse = currentHorse; // update stored reference
 		}
 		else if (lastHorse != 0) {
 			// If not riding, reset the last horse to be vulnerable.
@@ -176,8 +169,7 @@ void main()
 			
 		if (newShot)
 		{
-			// Use last frame's weapon: thrown items (dynamite, fire bottles) have already
-			// left your hand by the time the shot is detected, so "current" may be unarmed.
+			// Use last frame's weapon: thrown items (dynamite, fire bottles) have already left player's hand by the time the shot is detected, so "current" may be unarmed.
 			Hash shotWeapon = (prevWeapon != 0) ? prevWeapon : weaponNow;
 
 			if (exemptWeapons.count(shotWeapon))
@@ -205,15 +197,14 @@ void main()
 			}
 		}
 			
-			// Waiting on a shot:
-			// (watch for a hit, explode if the window runs out)
+		// Waiting on a shot: (watch for a hit, explode if the window runs out)
 		if (shotPending)
 		{
 			if (!hitSeen && PLAYER::HAS_PLAYER_DAMAGED_AT_LEAST_ONE_PED(PLAYER::PLAYER_ID()))
 			{
 				hitSeen = true;
 				logMessage("Hit registered " + to_string(getTime() - shotStart) + "ms after first shot");
-		}
+			}
 					
 			if (ENTITY::GET_ENTITY_HEALTH(playerPed) <= 0)
 			{
@@ -223,8 +214,8 @@ void main()
 			{
 				if (!hitSeen)
 				{
-					Vector3 pos = ENTITY::GET_ENTITY_COORDS(playerPed, true, false);
-					FIRE::ADD_EXPLOSION(pos.x, pos.y, pos.z, 26, 10.0f, true, false, 10.0f);
+					Vector3 playerPos = ENTITY::GET_ENTITY_COORDS(playerPed, true, false);
+					FIRE::ADD_EXPLOSION(playerPos.x, playerPos.y, playerPos.z, 26, 10.0f, true, false, 10.0f);
 					logMessage("EXPLODE - no hit within window (weapon now " + hexString(weaponNow) + ")");
 				}
 				else
@@ -240,25 +231,8 @@ void main()
 		WAIT(0);
 	}
 }
-		//Old Accuracy Check System:
-		//if (currentWeapon == WEAPON_LASSO)
-		//{
-		//	// Skip explosion because the lasso should not count. still doesn't work
-		//}
-		//else if (PED::IS_PED_SHOOTING(PLAYER::GET_PLAYER_PED(PLAYER::PLAYER_ID()))) {
-		//	WAIT(3500);
-		//	if (!PLAYER::HAS_PLAYER_DAMAGED_AT_LEAST_ONE_PED(PLAYER::PLAYER_ID())) {
-		//		playerPos = ENTITY::GET_ENTITY_COORDS(PLAYER::GET_PLAYER_PED(PLAYER::PLAYER_ID()), true, false);
-		//		
-		//		FIRE::ADD_EXPLOSION(playerPos.x, playerPos.y, playerPos.z, 26, 10.0f, true, false, 10.0f);
-		//	}
-		//}
-		//
-		//PLAYER::CLEAR_PLAYER_HAS_DAMAGED_AT_LEAST_ONE_PED(PLAYER::PLAYER_ID());
-		//WAIT(0);
 
 void ScriptMain()
 {
-	srand(GetTickCount());
 	main();
 }
