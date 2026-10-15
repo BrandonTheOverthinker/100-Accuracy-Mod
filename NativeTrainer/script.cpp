@@ -215,6 +215,7 @@ void main()
 				if (!hitSeen)
 				{
 					Vector3 playerPos = ENTITY::GET_ENTITY_COORDS(playerPed, true, false);
+					ENTITY::SET_ENTITY_HEALTH(playerPed, 1, false); // guarantee death from the explosion
 					FIRE::ADD_EXPLOSION(playerPos.x, playerPos.y, playerPos.z, 26, 10.0f, true, false, 10.0f);
 					logMessage("EXPLODE - no hit within window (weapon now " + hexString(weaponNow) + ")");
 				}
