@@ -192,7 +192,13 @@ void main()
 					// if the user shoots, then throws dynamite: stretch the window, never shrink it
 					shotDeadline = getTime() + window;
 				}
-
+				Entity aimedAt = 0;
+				PLAYER::GET_ENTITY_PLAYER_IS_FREE_AIMING_AT(PLAYER::PLAYER_ID(), &aimedAt);
+				logMessage("DIAG melee=" + to_string(PED::IS_PED_IN_MELEE_COMBAT(playerPed))
+					+ " meleeTarget=" + to_string(PED::GET_MELEE_TARGET_FOR_PED(playerPed))
+					+ " stealthKilled=" + to_string(PED::IS_PED_BEING_STEALTH_KILLED(PED::GET_MELEE_TARGET_FOR_PED(playerPed)))
+					+ " control=" + to_string(PLAYER::IS_PLAYER_CONTROL_ON(PLAYER::PLAYER_ID()))
+					+ " aimedAt=" + to_string(aimedAt));
 				logMessage("Shot, weapon " + hexString(shotWeapon) + ", window " + to_string(window) + "ms");
 			}
 		}
