@@ -22,7 +22,7 @@ using namespace std;
 
 static const ULONGLONG defaultKillWindow = 2000;
 static const ULONGLONG bowKillWindow = 3500;
-static const ULONGLONG dynamicKillWindow = 6000;
+static const ULONGLONG dynamicKillWindow = 9000;
 static const ULONGLONG msgDuration = 3000;  // how long the F3 text stays on screen
 static const bool logging = true;  // writes 100AccuracyMod.log (in the game folder)
 
@@ -48,6 +48,7 @@ static Hash prevWeapon = 0;
 
 static bool shotPending = false; // are we waiting to see if a shot lands or not?
 static bool hitSeen = false; // did ped get damaged?
+static bool executionHitSeen = false; // execution shots count as hits even without the player-damaged flag
 static ULONGLONG shotStart = 0;
 static ULONGLONG shotDeadline = 0;
 
@@ -100,6 +101,7 @@ static void cancelPendingShot()
 {
 	shotPending = false;
 	hitSeen = false;
+	executionHitSeen = false;
 }
 
 	// Main loop: //
@@ -108,11 +110,11 @@ void main()
 {
 	while (true)
 	{
-		
+
 		if (IsKeyJustUp(VK_F3))  // using the keyboard.h function
 		{
 			modEnabled = !modEnabled;
-			
+
 			if (modEnabled)
 			{
 				// Display text to indicate the mod is enabled, for 3 seconds
@@ -143,7 +145,7 @@ void main()
 			WAIT(0);
 			continue;
 		}
-		
+
 		Ped playerPed = PLAYER::GET_PLAYER_PED(PLAYER::PLAYER_ID());
 		Ped currentHorse = PED::GET_MOUNT(playerPed);
 
@@ -166,7 +168,7 @@ void main()
 		bool shooting = PED::IS_PED_SHOOTING(playerPed) != 0;
 		bool newShot = shooting && !wasShooting; // only true on the first frame of a shot
 		wasShooting = shooting; // saves this frame’s result so the next frame can compare against it
-			
+
 		if (newShot)
 		{
 			// Use last frame's weapon: thrown items (dynamite, fire bottles) have already left player's hand by the time the shot is detected, so "current" may be unarmed.
@@ -179,51 +181,78 @@ void main()
 			else
 			{
 				ULONGLONG window = explodingWeapons.count(shotWeapon) ? dynamicKillWindow : (bowWeapons.count(shotWeapon) ? bowKillWindow : defaultKillWindow);
+				bool inMelee = PED::IS_PED_IN_MELEE_COMBAT(playerPed) != 0;
+				Ped meleeTarget = PED::GET_MELEE_TARGET_FOR_PED(playerPed);
+				bool targetBeingStealthKilled = meleeTarget != 0 && PED::IS_PED_BEING_STEALTH_KILLED(meleeTarget) != 0;
+				bool playerControlOn = PLAYER::IS_PLAYER_CONTROL_ON(PLAYER::PLAYER_ID()) != 0;
+				bool executionShot = targetBeingStealthKilled || (inMelee && meleeTarget != 0 && !playerControlOn);
 
 				if (!shotPending)
 				{
 					shotPending = true;
 					hitSeen = false;
+					executionHitSeen = executionShot;
 					shotStart = getTime();
 					shotDeadline = getTime() + window;
+					if (executionHitSeen)
+						logMessage("Execution hit registered separately");
 				}
-				else if (getTime() + window > shotDeadline)
+				else
 				{
-					// if the user shoots, then throws dynamite: stretch the window, never shrink it
-					shotDeadline = getTime() + window;
+					if (executionShot && !executionHitSeen)
+					{
+						executionHitSeen = true;
+						logMessage("Execution hit registered separately");
+					}
+					if (getTime() + window > shotDeadline)
+					{
+						// if the user shoots, then throws dynamite: stretch the window, never shrink it
+						shotDeadline = getTime() + window;
+					}
 				}
 				Entity aimedAt = 0;
 				PLAYER::GET_ENTITY_PLAYER_IS_FREE_AIMING_AT(PLAYER::PLAYER_ID(), &aimedAt);
-				logMessage("DIAG melee=" + to_string(PED::IS_PED_IN_MELEE_COMBAT(playerPed))
-					+ " meleeTarget=" + to_string(PED::GET_MELEE_TARGET_FOR_PED(playerPed))
-					+ " stealthKilled=" + to_string(PED::IS_PED_BEING_STEALTH_KILLED(PED::GET_MELEE_TARGET_FOR_PED(playerPed)))
-					+ " control=" + to_string(PLAYER::IS_PLAYER_CONTROL_ON(PLAYER::PLAYER_ID()))
+				logMessage("DIAG melee=" + to_string(inMelee)
+					+ " meleeTarget=" + to_string(meleeTarget)
+					+ " stealthKilled=" + to_string(targetBeingStealthKilled)
+					+ " control=" + to_string(playerControlOn)
 					+ " aimedAt=" + to_string(aimedAt));
 				logMessage("Shot, weapon " + hexString(shotWeapon) + ", window " + to_string(window) + "ms");
 			}
 		}
-			
-		// Waiting on a shot: (watch for a hit, explode if the window runs out)
-		if (shotPending)
+
+		// Only clear the damage flag after observing it; an unconditional clear can erase a hit
+		// that occurs between a false poll and the end of this frame.
+		if (PLAYER::HAS_PLAYER_DAMAGED_AT_LEAST_ONE_PED(PLAYER::PLAYER_ID()))
 		{
-			if (!hitSeen && PLAYER::HAS_PLAYER_DAMAGED_AT_LEAST_ONE_PED(PLAYER::PLAYER_ID()))
+			if (shotPending && !hitSeen)
 			{
 				hitSeen = true;
 				logMessage("Hit registered " + to_string(getTime() - shotStart) + "ms after first shot");
 			}
-					
+			PLAYER::CLEAR_PLAYER_HAS_DAMAGED_AT_LEAST_ONE_PED(PLAYER::PLAYER_ID());
+		}
+
+		// Waiting on a shot: (watch for a hit, explode if the window runs out)
+		if (shotPending)
+		{
 			if (ENTITY::GET_ENTITY_HEALTH(playerPed) <= 0)
 			{
 				cancelPendingShot(); // already dead, nothing to explode
 			}
 			else if (getTime() >= shotDeadline)
 			{
-				if (!hitSeen)
+				if (!hitSeen && !executionHitSeen)
 				{
 					Vector3 playerPos = ENTITY::GET_ENTITY_COORDS(playerPed, true, false);
 					ENTITY::SET_ENTITY_HEALTH(playerPed, 1, false); // guarantee death from the explosion
 					FIRE::ADD_EXPLOSION(playerPos.x, playerPos.y, playerPos.z, 26, 10.0f, true, false, 10.0f);
 					logMessage("EXPLODE - no hit within window (weapon now " + hexString(weaponNow) + ")");
+				}
+				// if player is executing, they may have hit the target without the player-damaged flag being set
+				else if (executionHitSeen && !hitSeen)
+				{
+					logMessage("Window closed OK - execution hit");
 				}
 				else
 				{
@@ -232,8 +261,7 @@ void main()
 				cancelPendingShot();
 			}
 		}
-			
-		PLAYER::CLEAR_PLAYER_HAS_DAMAGED_AT_LEAST_ONE_PED(PLAYER::PLAYER_ID());
+
 		prevWeapon = weaponNow;
 		WAIT(0);
 	}

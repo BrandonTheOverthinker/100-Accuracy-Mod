@@ -20,7 +20,7 @@ class MenuController;
 
 struct ColorRgba
 {
-	byte	r, g, b, a;
+	unsigned char r, g, b, a;
 };
 
 enum eMenuItemClass
@@ -300,4 +300,3 @@ public:
 		OnFrame();
 	}
 };
-
