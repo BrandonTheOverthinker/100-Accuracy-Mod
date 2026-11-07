@@ -49,6 +49,7 @@ static Hash prevWeapon = 0;
 
 static bool shotPending = false; // are we waiting to see if a shot lands or not?
 static bool hitSeen = false; // did ped get damaged?
+static bool executionHitSeen = false; // a shot during a paired grapple state counts as an execution hit
 static ULONGLONG shotStart = 0;
 static ULONGLONG shotDeadline = 0;
 static ULONGLONG lastExecutionStateLog = 0;
@@ -64,6 +65,15 @@ static ULONGLONG getTime()
 {
 	return GetTickCount64();
 }
+static string getTimestampString()
+{
+	time_t now = time(0);
+	struct tm tstruct;
+	char buf[80];
+	tstruct = *localtime(&now);
+	strftime(buf, sizeof(buf), "%Y-%m-%d %H:%M:%S", &tstruct);
+	return string(buf);
+}
 
 static string hexString(Hash h)
 {
@@ -76,7 +86,7 @@ static void logMessage(const string& msg)
 {
 	if (!logging) return;
 	ofstream f("100AccuracyMod.log", ios::app);
-	f << getTime() << "  " << msg << "\n";
+	f << getTimestampString() << "  " << msg << "\n";
 }
 
 // Bottom screen text. Uses the same UI::DRAW_TEXT approach as rampage trainer (has to be drawn every frame).
@@ -102,6 +112,7 @@ static void cancelPendingShot()
 {
 	shotPending = false;
 	hitSeen = false;
+	executionHitSeen = false;
 }
 
 	// Main loop: //
@@ -187,6 +198,9 @@ void main()
 				bool playerControlOn = PLAYER::IS_PLAYER_CONTROL_ON(PLAYER::PLAYER_ID()) != 0;
 				int playerGrappleState = PED::GET_PED_GRAPPLE_STATE(playerPed);
 				int targetGrappleState = meleeTarget != 0 ? PED::GET_PED_GRAPPLE_STATE(meleeTarget) : -1;
+				bool executionShot = meleeTarget != 0
+					&& playerGrappleState >= 0
+					&& playerGrappleState == targetGrappleState;
 				float playerMeleePhase = PED::_GET_PED_MELEE_ACTION_PHASE(playerPed);
 				float targetMeleePhase = meleeTarget != 0 ? PED::_GET_PED_MELEE_ACTION_PHASE(meleeTarget) : -1.0f;
 
@@ -194,11 +208,19 @@ void main()
 				{
 					shotPending = true;
 					hitSeen = false;
+					executionHitSeen = executionShot;
 					shotStart = getTime();
 					shotDeadline = getTime() + window;
+					if (executionHitSeen)
+						logMessage("Execution hit registered from paired grapple state " + to_string(playerGrappleState));
 				}
 				else
 				{
+					if (executionShot && !executionHitSeen)
+					{
+						executionHitSeen = true;
+						logMessage("Execution hit registered from paired grapple state " + to_string(playerGrappleState));
+					}
 					if (getTime() + window > shotDeadline)
 					{
 						// if the user shoots, then throws dynamite: stretch the window, never shrink it
@@ -213,6 +235,7 @@ void main()
 					+ " control=" + to_string(playerControlOn)
 					+ " grapplePlayer=" + to_string(playerGrappleState)
 					+ " grappleTarget=" + to_string(targetGrappleState)
+					+ " executionShot=" + to_string(executionShot)
 					+ " meleePhasePlayer=" + to_string(playerMeleePhase)
 					+ " meleePhaseTarget=" + to_string(targetMeleePhase)
 					+ " aimedAt=" + to_string(aimedAt));
@@ -259,12 +282,16 @@ void main()
 			}
 			else if (getTime() >= shotDeadline)
 			{
-				if (!hitSeen)
+				if (!hitSeen && !executionHitSeen)
 				{
 					Vector3 playerPos = ENTITY::GET_ENTITY_COORDS(playerPed, true, false);
 					ENTITY::SET_ENTITY_HEALTH(playerPed, 1, false); // guarantee death from the explosion
 					FIRE::ADD_EXPLOSION(playerPos.x, playerPos.y, playerPos.z, 26, 10.0f, true, false, 10.0f);
 					logMessage("EXPLODE - no hit within window (weapon now " + hexString(weaponNow) + ")");
+				}
+				else if (executionHitSeen && !hitSeen)
+				{
+					logMessage("Window closed OK - execution hit");
 				}
 				else
 				{
