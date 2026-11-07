@@ -1210,9 +1210,10 @@ namespace PED
 	static Any _0x5BF0B9D9A8E227A0(Any p0) { return invoke<Any>(0x5BF0B9D9A8E227A0, p0); }
 	static void _0x642720D8D69328B6(Any p0, Any p1) { invoke<Void>(0x642720D8D69328B6, p0, p1); }
 	static BOOL _0xDCCA191DF9980FD7(Ped ped, Any p1, Any p2) { return invoke<BOOL>(0xDCCA191DF9980FD7, ped, p1, p2); }
-	static Any _0x6127F25ED21C533C(Any p0) { return invoke<Any>(0x6127F25ED21C533C, p0); }
+	static float _GET_PED_MELEE_ACTION_PHASE(Ped ped) { return invoke<float>(0x6127F25ED21C533C, ped); }
 	static BOOL IS_PED_BEING_STEALTH_KILLED(Ped ped) { return invoke<BOOL>(0x863B23EFDE9C5DF2, ped); }
 	static Ped GET_MELEE_TARGET_FOR_PED(Ped ped) { return invoke<Ped>(0x18A3E9EE1297FD39, ped); }
+	static int GET_PED_GRAPPLE_STATE(Ped ped) { return invoke<int>(0x2311F15D971AA680, ped); }
 	static void _0xDEDBED3020DA49DC(Any p0) { invoke<Void>(0xDEDBED3020DA49DC, p0); }
 	static void _0xA405BF9F01960C16(Any p0) { invoke<Void>(0xA405BF9F01960C16, p0); }
 	static Any _0xEC6B59BE445FEC51(Any p0) { return invoke<Any>(0xEC6B59BE445FEC51, p0); }
@@ -7180,4 +7181,3 @@ namespace UNK4
 	static void _0x1C38C3577901AF1F() { invoke<Void>(0x1C38C3577901AF1F); }
 	static void _0xB3E8841F6BDAF83E() { invoke<Void>(0xB3E8841F6BDAF83E); }
 }
-

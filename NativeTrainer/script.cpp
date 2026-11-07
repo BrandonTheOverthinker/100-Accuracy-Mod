@@ -24,6 +24,7 @@ static const ULONGLONG defaultKillWindow = 2000;
 static const ULONGLONG bowKillWindow = 3500;
 static const ULONGLONG dynamicKillWindow = 9000;
 static const ULONGLONG msgDuration = 3000;  // how long the F3 text stays on screen
+static const ULONGLONG executionStateLogInterval = 250;
 static const bool logging = true;  // writes 100AccuracyMod.log (in the game folder)
 
 static const unordered_set<Hash> exemptWeapons = {
@@ -48,9 +49,9 @@ static Hash prevWeapon = 0;
 
 static bool shotPending = false; // are we waiting to see if a shot lands or not?
 static bool hitSeen = false; // did ped get damaged?
-static bool executionHitSeen = false; // execution shots count as hits even without the player-damaged flag
 static ULONGLONG shotStart = 0;
 static ULONGLONG shotDeadline = 0;
+static ULONGLONG lastExecutionStateLog = 0;
 
 static string statusText;
 static bool msgVisible = false;
@@ -101,7 +102,6 @@ static void cancelPendingShot()
 {
 	shotPending = false;
 	hitSeen = false;
-	executionHitSeen = false;
 }
 
 	// Main loop: //
@@ -185,25 +185,20 @@ void main()
 				Ped meleeTarget = PED::GET_MELEE_TARGET_FOR_PED(playerPed);
 				bool targetBeingStealthKilled = meleeTarget != 0 && PED::IS_PED_BEING_STEALTH_KILLED(meleeTarget) != 0;
 				bool playerControlOn = PLAYER::IS_PLAYER_CONTROL_ON(PLAYER::PLAYER_ID()) != 0;
-				bool executionShot = targetBeingStealthKilled || (inMelee && meleeTarget != 0 && !playerControlOn);
+				int playerGrappleState = PED::GET_PED_GRAPPLE_STATE(playerPed);
+				int targetGrappleState = meleeTarget != 0 ? PED::GET_PED_GRAPPLE_STATE(meleeTarget) : -1;
+				float playerMeleePhase = PED::_GET_PED_MELEE_ACTION_PHASE(playerPed);
+				float targetMeleePhase = meleeTarget != 0 ? PED::_GET_PED_MELEE_ACTION_PHASE(meleeTarget) : -1.0f;
 
 				if (!shotPending)
 				{
 					shotPending = true;
 					hitSeen = false;
-					executionHitSeen = executionShot;
 					shotStart = getTime();
 					shotDeadline = getTime() + window;
-					if (executionHitSeen)
-						logMessage("Execution hit registered separately");
 				}
 				else
 				{
-					if (executionShot && !executionHitSeen)
-					{
-						executionHitSeen = true;
-						logMessage("Execution hit registered separately");
-					}
 					if (getTime() + window > shotDeadline)
 					{
 						// if the user shoots, then throws dynamite: stretch the window, never shrink it
@@ -216,9 +211,31 @@ void main()
 					+ " meleeTarget=" + to_string(meleeTarget)
 					+ " stealthKilled=" + to_string(targetBeingStealthKilled)
 					+ " control=" + to_string(playerControlOn)
+					+ " grapplePlayer=" + to_string(playerGrappleState)
+					+ " grappleTarget=" + to_string(targetGrappleState)
+					+ " meleePhasePlayer=" + to_string(playerMeleePhase)
+					+ " meleePhaseTarget=" + to_string(targetMeleePhase)
 					+ " aimedAt=" + to_string(aimedAt));
 				logMessage("Shot, weapon " + hexString(shotWeapon) + ", window " + to_string(window) + "ms");
 			}
+		}
+
+		ULONGLONG now = getTime();
+		Ped stateTarget = PED::GET_MELEE_TARGET_FOR_PED(playerPed);
+		if ((PED::IS_PED_IN_MELEE_COMBAT(playerPed) || stateTarget != 0)
+			&& now - lastExecutionStateLog >= executionStateLogInterval)
+		{
+			int playerGrappleState = PED::GET_PED_GRAPPLE_STATE(playerPed);
+			int targetGrappleState = stateTarget != 0 ? PED::GET_PED_GRAPPLE_STATE(stateTarget) : -1;
+			float playerMeleePhase = PED::_GET_PED_MELEE_ACTION_PHASE(playerPed);
+			float targetMeleePhase = stateTarget != 0 ? PED::_GET_PED_MELEE_ACTION_PHASE(stateTarget) : -1.0f;
+			logMessage("EXEC_STATE melee=" + to_string(PED::IS_PED_IN_MELEE_COMBAT(playerPed))
+				+ " target=" + to_string(stateTarget)
+				+ " grapplePlayer=" + to_string(playerGrappleState)
+				+ " grappleTarget=" + to_string(targetGrappleState)
+				+ " meleePhasePlayer=" + to_string(playerMeleePhase)
+				+ " meleePhaseTarget=" + to_string(targetMeleePhase));
+			lastExecutionStateLog = now;
 		}
 
 		// Only clear the damage flag after observing it; an unconditional clear can erase a hit
@@ -242,17 +259,12 @@ void main()
 			}
 			else if (getTime() >= shotDeadline)
 			{
-				if (!hitSeen && !executionHitSeen)
+				if (!hitSeen)
 				{
 					Vector3 playerPos = ENTITY::GET_ENTITY_COORDS(playerPed, true, false);
 					ENTITY::SET_ENTITY_HEALTH(playerPed, 1, false); // guarantee death from the explosion
 					FIRE::ADD_EXPLOSION(playerPos.x, playerPos.y, playerPos.z, 26, 10.0f, true, false, 10.0f);
 					logMessage("EXPLODE - no hit within window (weapon now " + hexString(weaponNow) + ")");
-				}
-				// if player is executing, they may have hit the target without the player-damaged flag being set
-				else if (executionHitSeen && !hitSeen)
-				{
-					logMessage("Window closed OK - execution hit");
 				}
 				else
 				{
