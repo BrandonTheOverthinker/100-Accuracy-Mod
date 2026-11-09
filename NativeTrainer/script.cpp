@@ -18,7 +18,7 @@
 
 using namespace std;
 
-	// Settings: //
+// Settings: //
 
 static const ULONGLONG defaultKillWindow = 2000;
 static const ULONGLONG bowKillWindow = 3500;
@@ -40,10 +40,11 @@ static const unordered_set<Hash> bowWeapons = {
 	0x88A8505C, // bow
 };
 
-	// States: //
+// States: //
 
 static bool modEnabled = true;
 static Ped lastHorse = 0;
+static Ped prevLastHorse = 0;
 static bool wasShooting = false; // detecting the moment a shot starts
 static Hash prevWeapon = 0;
 
@@ -53,12 +54,14 @@ static bool executionHitSeen = false; // a shot during a paired grapple state co
 static ULONGLONG shotStart = 0;
 static ULONGLONG shotDeadline = 0;
 static ULONGLONG lastExecutionStateLog = 0;
+static int shotCount = 0; // NEW: Counter for shots fired per session
+static bool wasHorseInvulnerable = false;
 
 static string statusText;
 static bool msgVisible = false;
 static ULONGLONG msgEnd = 0;
 
-	// Helpers: //
+// Helpers: //
 
 // One place for the clock to experiment with the dead-eye bug, could try swapping this for GAMEPLAY::GET_GAME_TIMER().
 static ULONGLONG getTime()
@@ -117,17 +120,20 @@ static void cancelPendingShot()
 
 	// Main loop: //
 
-void main()
+vvoid main()
 {
 	while (true)
 	{
-
+		// MOD: Toggle pressed. Enabling/Disabling mod.
 		if (IsKeyJustUp(VK_F3))  // using the keyboard.h function
 		{
 			modEnabled = !modEnabled;
 
 			if (modEnabled)
 			{
+				// Reset shot count when the mod is enabled for a new session
+				shotCount = 0; 
+				logMessage("MOD: Mod enabled.");
 				// Display text to indicate the mod is enabled, for 3 seconds
 				showStatusText("100% Accuracy Mod: ENABLED");
 			}
@@ -141,8 +147,9 @@ void main()
 				if (lastHorse != 0) {
 					ENTITY::SET_ENTITY_INVINCIBLE(lastHorse, false);
 					lastHorse = 0;
+				}
+				logMessage("MOD: Mod disabled. Cancelling pending shot.");
 			}
-		}
 			logMessage(modEnabled ? "Mod ENABLED" : "Mod DISABLED");
 		}
 
@@ -229,6 +236,13 @@ void main()
 				}
 				Entity aimedAt = 0;
 				PLAYER::GET_ENTITY_PLAYER_IS_FREE_AIMING_AT(PLAYER::PLAYER_ID(), &aimedAt);
+
+				// --- Shot Counter and Logging Logic ---
+				shotCount++;
+				logMessage("ACTION: Shot fired (Shot #" + to_string(shotCount) + "). Weapon: " + hexString(shotWeapon) + ", Window: " + to_string(window) + "ms");
+				// --------------------------------------
+
+				// Diagnostic logging (cleaned up)
 				logMessage("DIAG melee=" + to_string(inMelee)
 					+ " meleeTarget=" + to_string(meleeTarget)
 					+ " stealthKilled=" + to_string(targetBeingStealthKilled)
@@ -239,10 +253,35 @@ void main()
 					+ " meleePhasePlayer=" + to_string(playerMeleePhase)
 					+ " meleePhaseTarget=" + to_string(targetMeleePhase)
 					+ " aimedAt=" + to_string(aimedAt));
-				logMessage("Shot, weapon " + hexString(shotWeapon) + ", window " + to_string(window) + "ms");
 			}
+// Horse Vulnerability Tracking: Log state change only when flipping between vulnerable/invulnerable
+if (lastHorse != 0)
+{
+    bool isCurrentlyInvulnerable = PED::IS_HORSE_INVULNERABLE(lastHorse);
+
+    if (isCurrentlyInvulnerable != wasHorseInvulnerable)
+    {
+        string state = isCurrentlyInvulnerable ? "INVULNERABLE" : "VULNERABLE";
+        logMessage("HORSE STATE CHANGE: Horse ID " + to_string(lastHorse) + " is now " + state);
+        wasHorseInvulnerable = isCurrentlyInvulnerable;
+    }
+}
+logMessage(\"STATE: Current last tracked horse: \" + to_string(lastHorse));
+// Horse Vulnerability Tracking: Log state change only when flipping between vulnerable/invulnerable
+if (lastHorse != 0)
+{
+    bool isCurrentlyInvulnerable = PED::IS_HORSE_INVULNERABLE(lastHorse);
+
+    if (isCurrentlyInvulnerable != wasHorseInvulnerable)
+    {
+        string state = isCurrentlyInvulnerable ? "INVULNERABLE" : "VULNERABLE";
+        logMessage("HORSE STATE CHANGE: Horse ID " + to_string(lastHorse) + " is now " + state);
+        wasHorseInvulnerable = isCurrentlyInvulnerable;
+    }
+}
 		}
 
+logMessage(\"STATE: Checking melee/execution state... \");
 		ULONGLONG now = getTime();
 		Ped stateTarget = PED::GET_MELEE_TARGET_FOR_PED(playerPed);
 		if ((PED::IS_PED_IN_MELEE_COMBAT(playerPed) || stateTarget != 0)
@@ -272,6 +311,7 @@ void main()
 			}
 			PLAYER::CLEAR_PLAYER_HAS_DAMAGED_AT_LEAST_ONE_PED(PLAYER::PLAYER_ID());
 		}
+logMessage(\"ACTION: Shot pending. Waiting for hit/window expiration.\");
 
 		// Waiting on a shot: (watch for a hit, explode if the window runs out)
 		if (shotPending)
@@ -284,6 +324,7 @@ void main()
 			{
 				if (!hitSeen && !executionHitSeen)
 				{
+logMessage(\"ACTION: Shot window expired. Cancelling pending shot.\");\n\t\t\tcancelPendingShot();
 					Vector3 playerPos = ENTITY::GET_ENTITY_COORDS(playerPed, true, false);
 					ENTITY::SET_ENTITY_HEALTH(playerPed, 1, false); // guarantee death from the explosion
 					FIRE::ADD_EXPLOSION(playerPos.x, playerPos.y, playerPos.z, 26, 10.0f, true, false, 10.0f);
